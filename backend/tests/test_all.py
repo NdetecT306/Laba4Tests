@@ -1,22 +1,18 @@
 import sys
 import os
 from pathlib import Path
-
-# Добавляем корневую директорию проекта в PYTHONPATH
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
 import pytest
 from typing import Generator
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
+from server.main import app
+from server.db import get_db, Base
 
-# Определяем, запущены ли тесты в CI (GitHub Actions)
 IS_CI = os.environ.get('CI') == 'true'
-
 if IS_CI:
-    # В CI используем SQLite
     SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
@@ -24,15 +20,10 @@ if IS_CI:
         poolclass=StaticPool,
     )
 else:
-    # Локально можно использовать PostgreSQL
     from server.db import get_db_engine
     engine = get_db_engine()
-
+    
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Переопределяем get_db для тестов
-from server.main import app
-from server.db import get_db, Base
 
 def override_get_db():
     try:
@@ -43,10 +34,6 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
-# Остальная часть тестов остается без изменений
-# (ваши существующие тесты ниже)
-
-# Создаем таблицы для тестов
 Base.metadata.create_all(bind=engine)
 
 @pytest.fixture(scope="session")
@@ -79,7 +66,6 @@ def client(db_session):
         yield test_client
     app.dependency_overrides.clear()
 
-# ==================== ТЕСТЫ АВТОРИЗАЦИИ ====================
 from server.auth import hash_password, verify_password
 
 @pytest.fixture
