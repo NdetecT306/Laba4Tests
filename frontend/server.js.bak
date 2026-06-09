@@ -1,0 +1,142 @@
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {  // Добавьте '0.0.0.0'
+  console.log(`Server running on port ${PORT}`);
+});
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'build')));
+
+// Чтение db.json
+const readDB = () => {
+  try {
+    const data = fs.readFileSync(path.join(__dirname, 'db.json'), 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    return { chps: [], houses: [] };
+  }
+};
+
+// Запись в db.json
+const writeDB = (data) => {
+  fs.writeFileSync(path.join(__dirname, 'db.json'), JSON.stringify(data, null, 2));
+};
+
+// ========== API endpoints ==========
+
+// Получить все ТЭЦ
+app.get('/api/chps', (req, res) => {
+  const db = readDB();
+  res.json(db.chps);
+});
+
+// Получить все дома
+app.get('/api/houses', (req, res) => {
+  const db = readDB();
+  res.json(db.houses);
+});
+
+// Добавить ТЭЦ
+app.post('/api/chps', (req, res) => {
+  const db = readDB();
+  const newChp = { ...req.body, id: req.body.id || Date.now() };
+  db.chps.push(newChp);
+  writeDB(db);
+  res.json(newChp);
+});
+
+// Добавить дом
+app.post('/api/houses', (req, res) => {
+  const db = readDB();
+  const newHouse = { ...req.body, id: req.body.id || Date.now() };
+  db.houses.push(newHouse);
+  writeDB(db);
+  res.json(newHouse);
+});
+
+// Обновить ТЭЦ
+app.put('/api/chps/:id', (req, res) => {
+  const db = readDB();
+  const id = parseInt(req.params.id);
+  const index = db.chps.findIndex(c => c.id === id);
+  if (index !== -1) {
+    db.chps[index] = { ...db.chps[index], ...req.body };
+    writeDB(db);
+    res.json(db.chps[index]);
+  } else {
+    res.status(404).json({ error: 'ТЭЦ не найдена' });
+  }
+});
+
+// Обновить дом
+app.put('/api/houses/:id', (req, res) => {
+  const db = readDB();
+  const id = parseInt(req.params.id);
+  const index = db.houses.findIndex(h => h.id === id);
+  if (index !== -1) {
+    db.houses[index] = { ...db.houses[index], ...req.body };
+    writeDB(db);
+    res.json(db.houses[index]);
+  } else {
+    res.status(404).json({ error: 'Дом не найден' });
+  }
+});
+
+// Удалить ТЭЦ
+app.delete('/api/chps/:id', (req, res) => {
+  const db = readDB();
+  const id = parseInt(req.params.id);
+  db.chps = db.chps.filter(c => c.id !== id);
+  writeDB(db);
+  res.json({ success: true });
+});
+
+// Удалить дом
+app.delete('/api/houses/:id', (req, res) => {
+  const db = readDB();
+  const id = parseInt(req.params.id);
+  db.houses = db.houses.filter(h => h.id !== id);
+  writeDB(db);
+  res.json({ success: true });
+});
+
+// Частичное обновление (PATCH)
+app.patch('/api/chps/:id', (req, res) => {
+  const db = readDB();
+  const id = parseInt(req.params.id);
+  const index = db.chps.findIndex(c => c.id === id);
+  if (index !== -1) {
+    db.chps[index] = { ...db.chps[index], ...req.body };
+    writeDB(db);
+    res.json(db.chps[index]);
+  } else {
+    res.status(404).json({ error: 'ТЭЦ не найдена' });
+  }
+});
+
+app.patch('/api/houses/:id', (req, res) => {
+  const db = readDB();
+  const id = parseInt(req.params.id);
+  const index = db.houses.findIndex(h => h.id === id);
+  if (index !== -1) {
+    db.houses[index] = { ...db.houses[index], ...req.body };
+    writeDB(db);
+    res.json(db.houses[index]);
+  } else {
+    res.status(404).json({ error: 'Дом не найден' });
+  }
+});
+
+// Все остальные запросы отдаем React
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`API available at http://localhost:${PORT}/api`);
+  console.log(`Frontend available at http://localhost:${PORT}`);
+});
